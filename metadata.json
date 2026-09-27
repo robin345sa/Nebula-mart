@@ -1,0 +1,6 @@
+{
+  "name": "Nebula Mart",
+  "description": "Premium, trustworthy e-commerce shopping platform with Cash on Delivery, Steadfast & Pathao courier dispatch, and complete admin dashboard.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

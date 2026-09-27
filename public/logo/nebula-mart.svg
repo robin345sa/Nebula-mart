@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="100%" height="100%">
+  <!-- Solid Deep Royal Navy Blue Circle matching uploaded Nebula Mart logo -->
+  <circle cx="250" cy="250" r="246" fill="#112A7E" />
+
+  <!-- Three Tapered White Speed Lines on the Left of the Cart -->
+  <!-- Top Speed Line -->
+  <path d="M 126 124.5 Q 185 117 240 114 A 7.5 7.5 0 0 1 240 129 Q 185 128 126 126.5 A 1 1 0 0 1 126 124.5 Z" fill="#FFFFFF" />
+  <!-- Middle Speed Line -->
+  <path d="M 116 147.5 Q 185 140 248 137 A 8 8 0 0 1 248 153 Q 185 152 116 149.5 A 1 1 0 0 1 116 147.5 Z" fill="#FFFFFF" />
+  <!-- Bottom Speed Line -->
+  <path d="M 166 170.5 Q 210 164 256 161 A 7.5 7.5 0 0 1 256 176 Q 210 175 166 172.5 A 1 1 0 0 1 166 170.5 Z" fill="#FFFFFF" />
+
+  <!-- White Shopping Cart Icon -->
+  <g fill="none" stroke="#FFFFFF" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Cart Handle & Main Frame -->
+    <path d="M 220 68 L 252 68 L 288 166 L 356 166" stroke-width="15" />
+    <!-- Cart Basket Outer Rim -->
+    <path d="M 260 93 L 376 100 L 356 166" stroke-width="15" />
+    <!-- Cart Basket Middle Horizontal Bar -->
+    <path d="M 274 131 L 366 133" stroke-width="11" />
+    <!-- Cart Basket Inner Vertical Bars -->
+    <path d="M 304 96 L 310 166" stroke-width="11" />
+    <path d="M 342 98 L 334 166" stroke-width="11" />
+  </g>
+
+  <!-- Cart Wheels -->
+  <circle cx="294" cy="193" r="14.5" fill="#FFFFFF" />
+  <circle cx="348" cy="193" r="14.5" fill="#FFFFFF" />
+
+  <!-- Middle White Rounded Rectangle Pill for NEBULA -->
+  <rect x="70" y="216" width="360" height="84" rx="22" ry="22" fill="#FFFFFF" />
+  <text
+    x="250"
+    y="278"
+    font-family="Georgia, 'Times New Roman', Times, serif"
+    font-weight="900"
+    font-size="64"
+    fill="#112A7E"
+    text-anchor="middle"
+    letter-spacing="2"
+    stroke="#112A7E"
+    stroke-width="1.5"
+  >NEBULA</text>
+
+  <!-- Lower White Curved C-Bracket Wrapping MART -->
+  <path
+    d="M 430 317 L 172 317 C 132 317 118 340 118 361 C 118 382 132 405 172 405 L 396 405 L 402 397 L 174 397 C 146 397 132 381 132 361 C 132 341 146 325 174 325 L 424 325 Z"
+    fill="#FFFFFF"
+  />
+
+  <!-- MART White Bold Text -->
+  <text
+    x="278"
+    y="383"
+    font-family="Georgia, 'Times New Roman', Times, serif"
+    font-weight="900"
+    font-size="65"
+    fill="#FFFFFF"
+    text-anchor="middle"
+    letter-spacing="3"
+    stroke="#FFFFFF"
+    stroke-width="1.5"
+  >MART</text>
+
+  <!-- Bottom Estd-2026 Text -->
+  <text
+    x="250"
+    y="444"
+    font-family="Georgia, 'Times New Roman', Times, serif"
+    font-weight="400"
+    font-size="31"
+    fill="#FFFFFF"
+    text-anchor="middle"
+    letter-spacing="1.5"
+  >Estd-2026</text>
+</svg>
