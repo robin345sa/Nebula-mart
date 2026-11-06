@@ -8,17 +8,32 @@ interface OrderTrackingModalProps {
   onClose: () => void;
   lang: Language;
   settings?: StoreSettings;
+  initialPhone?: string;
 }
 
 export const OrderTrackingModal: React.FC<OrderTrackingModalProps> = ({
   isOpen,
   onClose,
   lang,
-  settings
+  settings,
+  initialPhone
 }) => {
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useState(initialPhone || '');
   const [searched, setSearched] = useState(false);
   const [matchedOrders, setMatchedOrders] = useState<Order[]>([]);
+
+  React.useEffect(() => {
+    if (isOpen && initialPhone) {
+      setQuery(initialPhone);
+      const clean = initialPhone.replace(/[^0-9]/g, '');
+      const allOrders = StorageService.getOrders();
+      const results = allOrders.filter((ord) =>
+        ord.customerPhone.replace(/[^0-9]/g, '').includes(clean)
+      );
+      setMatchedOrders(results);
+      setSearched(true);
+    }
+  }, [isOpen, initialPhone]);
 
   if (!isOpen) return null;
 

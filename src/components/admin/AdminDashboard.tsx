@@ -39,7 +39,14 @@ import {
   ArrowUpRight,
   Eye,
   SlidersHorizontal,
-  Globe
+  Globe,
+  Database,
+  Menu,
+  ChevronLeft,
+  ChevronRight,
+  ChevronDown,
+  X,
+  Tag
 } from 'lucide-react';
 import { Product, Order, Category, StoreSettings, Language, OrderStatus, AdminUser, HeroBanner } from '../../types';
 import { t } from '../../lib/translations';
@@ -51,6 +58,8 @@ import { AdminBanners } from './AdminBanners';
 import { AdminStaff } from './AdminStaff';
 import { AdminSecuritySettings } from './AdminSecuritySettings';
 import { AdminPayments } from './AdminPayments';
+import { AdminDatabase } from './AdminDatabase';
+import { AdminCoupons } from './AdminCoupons';
 import { DeleteConfirmModal } from './DeleteConfirmModal';
 
 interface AdminDashboardProps {
@@ -67,9 +76,11 @@ export type AdminTab =
   | 'orders'
   | 'products'
   | 'categories'
+  | 'coupons'
   | 'banners'
   | 'couriers'
   | 'payments'
+  | 'database'
   | 'staff'
   | 'security'
   | 'settings';
@@ -116,6 +127,24 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [authError, setAuthError] = useState('');
 
   const [activeTab, setActiveTab] = useState<AdminTab>('dashboard');
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const tabsScrollRef = React.useRef<HTMLDivElement>(null);
+
+  const scrollCarousel = (direction: 'left' | 'right') => {
+    if (tabsScrollRef.current) {
+      const scrollAmount = direction === 'left' ? -180 : 180;
+      tabsScrollRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+    }
+  };
+
+  useEffect(() => {
+    if (tabsScrollRef.current) {
+      const activeBtn = tabsScrollRef.current.querySelector(`[data-tab-id="${activeTab}"]`);
+      if (activeBtn) {
+        activeBtn.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+      }
+    }
+  }, [activeTab]);
 
   // Live Data states
   const [orders, setOrders] = useState<Order[]>(() => StorageService.getOrders());
@@ -603,6 +632,25 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     );
   }
 
+  const ADMIN_TABS = [
+    { id: 'dashboard' as AdminTab, labelBn: 'ড্যাশবোর্ড', labelEn: 'Dashboard', icon: LayoutDashboard, permission: 'dashboard' },
+    { id: 'orders' as AdminTab, labelBn: 'অর্ডারসমূহ', labelEn: 'Orders', icon: ShoppingBag, permission: 'orders', badge: pendingOrdersCount > 0 ? pendingOrdersCount : undefined },
+    { id: 'products' as AdminTab, labelBn: 'প্রোডাক্টস', labelEn: 'Products', icon: Package, permission: 'products' },
+    { id: 'categories' as AdminTab, labelBn: 'ক্যাটাগরি', labelEn: 'Categories', icon: Layers, permission: 'categories' },
+    { id: 'coupons' as AdminTab, labelBn: 'কুপন ডিসকাউন্ট', labelEn: 'Coupons', icon: Tag, permission: 'coupons' },
+    { id: 'banners' as AdminTab, labelBn: 'ব্যানার', labelEn: 'Banners', icon: SlidersHorizontal, permission: 'banners' },
+    { id: 'couriers' as AdminTab, labelBn: 'কুরিয়ার', labelEn: 'Couriers', icon: Truck, permission: 'couriers' },
+    { id: 'payments' as AdminTab, labelBn: 'পেমেন্ট', labelEn: 'Payments', icon: CreditCard, permission: 'payments' },
+    { id: 'database' as AdminTab, labelBn: 'ডাটাবেস', labelEn: 'Database', icon: Database, permission: 'settings' },
+    { id: 'staff' as AdminTab, labelBn: 'স্টাফ ও রোলস', labelEn: 'Staff & Roles', icon: Users, permission: 'staff' },
+    { id: 'security' as AdminTab, labelBn: 'সিকিউরিটি', labelEn: 'Security', icon: Shield, permission: 'settings' },
+    { id: 'settings' as AdminTab, labelBn: 'সেটিংস', labelEn: 'Settings', icon: Settings, permission: 'settings' },
+  ].filter(tab => {
+    if (!currentUser) return true;
+    if (currentUser.role === 'admin') return true;
+    return currentUser.permissions?.[tab.permission as keyof typeof currentUser.permissions];
+  });
+
   return (
     <div className="fixed inset-0 z-50 flex bg-white overflow-hidden text-slate-900">
       {/* Toast notification for courier actions */}
@@ -728,6 +776,20 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               </button>
             )}
 
+            {(currentUser?.role === 'admin' || currentUser?.permissions?.coupons) && (
+              <button
+                onClick={() => setActiveTab('coupons')}
+                className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  activeTab === 'coupons' 
+                    ? 'bg-orange-50 text-[#FF6B35] shadow-xs border-l-4 border-[#FF6B35]' 
+                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                }`}
+              >
+                <Tag className="w-4 h-4" />
+                <span>{lang === 'bn' ? 'কুপন ডিসকাউন্ট' : 'Coupons & Promo'}</span>
+              </button>
+            )}
+
             {(currentUser?.role === 'admin' || currentUser?.permissions?.banners) && (
               <button
                 onClick={() => setActiveTab('banners')}
@@ -798,6 +860,23 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
             {(currentUser?.role === 'admin' || currentUser?.permissions?.settings) && (
               <button
+                onClick={() => setActiveTab('database')}
+                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  activeTab === 'database' 
+                    ? 'bg-orange-50 text-[#FF6B35] shadow-xs border-l-4 border-[#FF6B35]' 
+                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <Database className="w-4 h-4 text-[#112A7E]" />
+                  <span>{lang === 'bn' ? 'ডাটাবেস ও স্টোরেজ' : 'Database & Hosting'}</span>
+                </div>
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" title="Auto-Save Active" />
+              </button>
+            )}
+
+            {(currentUser?.role === 'admin' || currentUser?.permissions?.settings) && (
+              <button
                 onClick={() => setActiveTab('settings')}
                 className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                   activeTab === 'settings' 
@@ -845,91 +924,250 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       {/* Main Content Area - Pure White Architecture */}
       <main className="flex-1 flex flex-col overflow-hidden bg-white text-slate-900">
         {/* Top Header Bar */}
-        <header className="h-16 border-b border-slate-200 px-6 flex items-center justify-between bg-white shrink-0 shadow-xs">
-          <div className="flex items-center gap-3">
-            {/* Mobile Tab Select with smooth horizontal scroll */}
-            <div className="flex md:hidden items-center gap-1.5 overflow-x-auto pb-1 max-w-[260px] sm:max-w-[340px] no-scrollbar">
-              {[
-                { id: 'dashboard', label: 'Dashboard' },
-                { id: 'orders', label: 'Orders' },
-                { id: 'products', label: 'Products' },
-                { id: 'categories', label: strings.categories },
-                { id: 'banners', label: 'Banners' },
-                { id: 'couriers', label: 'Couriers' },
-                { id: 'payments', label: 'Payments' },
-                { id: 'staff', label: 'Staff' },
-                { id: 'security', label: 'Security' },
-                { id: 'settings', label: 'Settings' },
-              ]
-                .filter(tab => {
-                  if (!currentUser) return true;
-                  if (currentUser.role === 'admin') return true;
-                  return currentUser.permissions.includes(tab.id as any);
-                })
-                .map(tab => (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id as AdminTab)}
-                    className={`px-2.5 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-colors ${
-                      activeTab === tab.id
-                        ? 'bg-[#FF6B35] text-white shadow-xs'
-                        : 'text-slate-600 bg-slate-100 hover:bg-slate-200'
-                    }`}
-                  >
-                    {tab.label}
-                  </button>
-                ))}
+        <header className="h-14 sm:h-16 border-b border-slate-200 px-3 sm:px-6 flex items-center justify-between bg-white shrink-0 shadow-2xs">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+            {/* Mobile Carousel / Drawer Trigger Button */}
+            <div className="flex md:hidden items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => setMobileNavOpen(true)}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-orange-50 hover:bg-orange-100 text-[#FF6B35] border border-orange-200 font-bold text-xs shadow-2xs active:scale-95 transition-all cursor-pointer select-none"
+                title={lang === 'bn' ? 'নেভিগেশন মেনু খুলুন' : 'Open Navigation Menu'}
+                aria-label="Toggle Admin Navigation"
+              >
+                <Menu className="w-4 h-4 text-[#FF6B35]" />
+                <span className="truncate max-w-[100px] sm:max-w-[130px]">
+                  {ADMIN_TABS.find(t => t.id === activeTab)?.[lang === 'bn' ? 'labelBn' : 'labelEn'] || activeTab}
+                </span>
+                <ChevronDown className="w-3 h-3 text-[#FF6B35]/70 shrink-0" />
+              </button>
             </div>
 
+            {/* Desktop Tab Heading */}
             <h1 className="hidden md:block text-base font-bold text-slate-900 capitalize">
-              {activeTab === 'couriers' 
-                ? (lang === 'bn' ? 'কুরিয়ার ও স্টেট-ওয়াইজ ডেলিভারি ড্যাশবোর্ড' : 'Courier & State Logistics')
-                : `${activeTab} Management`}
+              {ADMIN_TABS.find(t => t.id === activeTab)?.[lang === 'bn' ? 'labelBn' : 'labelEn'] || `${activeTab} Management`}
             </h1>
           </div>
 
-          <div className="flex items-center gap-2 sm:gap-3">
-            {/* Language Switcher Toggle in Admin Header */}
+          <div className="flex items-center gap-1.5 sm:gap-2.5">
+            {/* Language Switcher Toggle */}
             <button
               onClick={handleToggleAdminLang}
-              className="px-2.5 sm:px-3 py-1.5 rounded-lg border border-orange-200 bg-orange-50 hover:bg-orange-100 text-[#FF6B35] text-xs font-bold cursor-pointer transition-colors flex items-center gap-1.5 shadow-2xs"
-              title="Change Language / ভাষা পরিবর্তন করুন"
+              className="px-2 sm:px-2.5 py-1.5 rounded-lg border border-orange-200 bg-orange-50 hover:bg-orange-100 text-[#FF6B35] text-xs font-bold cursor-pointer transition-colors flex items-center gap-1 shadow-2xs"
+              title="Change Language / ভাষা পরিবর্তন"
             >
               <Globe className="w-3.5 h-3.5" />
-              <span>{lang === 'bn' ? 'English' : 'বাংলা'}</span>
+              <span className="text-[11px] sm:text-xs">{lang === 'bn' ? 'EN' : 'বাং'}</span>
             </button>
 
             {/* Start Fresh Store Button */}
             <button
               onClick={handleStartFreshStore}
-              className="px-3 py-1.5 rounded-lg border border-red-200 bg-red-50/60 hover:bg-red-100 text-red-700 text-xs font-bold cursor-pointer transition-colors flex items-center gap-1.5"
-              title={lang === 'bn' ? 'সকল ডেমো ডাটা মুছে সম্পূর্ণ ফ্রেশ নতুন স্টোর শুরু করুন' : 'Clear demo data to start fresh'}
+              className="px-2 sm:px-2.5 py-1.5 rounded-lg border border-red-200 bg-red-50/70 hover:bg-red-100 text-red-700 text-xs font-bold cursor-pointer transition-colors flex items-center gap-1"
+              title={lang === 'bn' ? 'সকল ডেমো ডাটা মুছে ফ্রেশ শুরু করুন' : 'Start Fresh Store'}
             >
               <Trash2 className="w-3.5 h-3.5 text-red-600" />
-              <span className="hidden sm:inline">{lang === 'bn' ? 'নতুন স্টোর (খালি করুন)' : 'Start Fresh'}</span>
+              <span className="hidden sm:inline text-xs">{lang === 'bn' ? 'নতুন স্টোর' : 'Fresh'}</span>
             </button>
 
             {/* Load Demo Data Button */}
             <button
               onClick={handleLoadSampleCatalog}
-              className="px-3 py-1.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 text-xs font-bold cursor-pointer transition-colors flex items-center gap-1.5"
-              title={lang === 'bn' ? 'স্যাম্পল পণ্য ও ক্যাটাগরি লোড করুন' : 'Load starter sample catalog'}
+              className="hidden min-[480px]:flex px-2 sm:px-2.5 py-1.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 text-xs font-bold cursor-pointer transition-colors items-center gap-1"
+              title={lang === 'bn' ? 'স্যাম্পল পণ্য ও ক্যাটাগরি লোড' : 'Load Samples'}
             >
               <RotateCcw className="w-3.5 h-3.5 text-slate-600" />
-              <span className="hidden sm:inline">{lang === 'bn' ? 'স্যাম্পল ডাটা লোড' : 'Load Samples'}</span>
+              <span className="hidden sm:inline text-xs">{lang === 'bn' ? 'স্যাম্পল ডাটা' : 'Samples'}</span>
             </button>
 
+            {/* Close Admin Button */}
             <button
               onClick={onClose}
-              className="px-3 py-1.5 rounded-lg bg-slate-100 text-slate-800 text-xs font-bold hover:bg-slate-200 cursor-pointer transition-colors"
+              className="px-2.5 py-1.5 rounded-lg bg-slate-100 text-slate-800 text-xs font-bold hover:bg-slate-200 cursor-pointer transition-colors flex items-center gap-1"
+              title={lang === 'bn' ? 'অ্যাডমিন বন্ধ করুন' : 'Close'}
             >
-              ✕ {lang === 'bn' ? 'বন্ধ করুন' : 'Close Admin'}
+              <X className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline text-xs">{lang === 'bn' ? 'বন্ধ করুন' : 'Close'}</span>
             </button>
           </div>
         </header>
 
+        {/* Mobile Horizontal Carousel Tabs Ribbon with Arrow Scrolling */}
+        <div className="md:hidden border-b border-slate-200 bg-slate-50/90 px-1.5 py-1.5 flex items-center gap-1 shrink-0 shadow-2xs">
+          <button
+            type="button"
+            onClick={() => scrollCarousel('left')}
+            className="w-7 h-7 flex items-center justify-center rounded-lg bg-white border border-slate-200 text-slate-500 hover:text-slate-800 shadow-2xs active:scale-90 shrink-0 cursor-pointer"
+            aria-label="Scroll Carousel Left"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+
+          <div
+            ref={tabsScrollRef}
+            className="flex items-center gap-1.5 overflow-x-auto scrollbar-none no-scrollbar py-0.5 scroll-smooth flex-1"
+          >
+            {ADMIN_TABS.map((tab) => {
+              const Icon = tab.icon;
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  data-tab-id={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 min-h-[34px] rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer shrink-0 select-none ${
+                    isActive
+                      ? 'bg-[#FF6B35] text-white shadow-xs font-black ring-2 ring-orange-200'
+                      : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-100 hover:text-slate-900'
+                  }`}
+                >
+                  <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-white' : 'text-slate-500'}`} />
+                  <span>{lang === 'bn' ? tab.labelBn : tab.labelEn}</span>
+                  {tab.badge && (
+                    <span className={`px-1.5 py-0.2 rounded-full text-[9px] font-black leading-none ${isActive ? 'bg-white text-[#FF6B35]' : 'bg-amber-500 text-black'}`}>
+                      {tab.badge}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          <button
+            type="button"
+            onClick={() => scrollCarousel('right')}
+            className="w-7 h-7 flex items-center justify-center rounded-lg bg-white border border-slate-200 text-slate-500 hover:text-slate-800 shadow-2xs active:scale-90 shrink-0 cursor-pointer"
+            aria-label="Scroll Carousel Right"
+          >
+            <ChevronRight className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Mobile Slide-Out Navigation Drawer */}
+        {mobileNavOpen && (
+          <div className="fixed inset-0 z-50 md:hidden animate-in fade-in duration-200">
+            {/* Backdrop */}
+            <div
+              className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs"
+              onClick={() => setMobileNavOpen(false)}
+            />
+
+            {/* Slide Drawer Panel */}
+            <div className="relative w-[85vw] max-w-xs h-full bg-white shadow-2xl flex flex-col justify-between z-10 animate-in slide-in-from-left duration-250 border-r border-slate-200">
+              <div>
+                {/* Drawer Header */}
+                <div className="p-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-9 h-9 rounded-xl bg-white border border-slate-200 p-0.5 shadow-2xs flex items-center justify-center overflow-hidden">
+                      <img
+                        src="/logo/nebula-mart.svg?v=3"
+                        alt="Nebula Mart"
+                        className="w-full h-full object-contain"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = '/logo/nebula-mart.svg';
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <span className="font-black text-sm text-slate-900 block leading-tight">Nebula Mart</span>
+                      <span className="text-[10px] text-emerald-600 font-bold uppercase tracking-wider">
+                        ● Admin Menu
+                      </span>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setMobileNavOpen(false)}
+                    className="w-8 h-8 rounded-lg bg-white border border-slate-200 text-slate-500 hover:text-slate-800 flex items-center justify-center cursor-pointer"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {/* Current Staff Info */}
+                {currentUser && (
+                  <div className="m-3 p-2.5 rounded-xl bg-orange-50/60 border border-orange-200/80 flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-lg bg-[#FF6B35] text-white flex items-center justify-center font-bold text-xs uppercase">
+                      {currentUser.name.charAt(0)}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-bold text-slate-900 truncate">{currentUser.name}</p>
+                      <p className="text-[10px] text-slate-500 font-semibold uppercase">{currentUser.role}</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Navigation Links list */}
+                <div className="p-3 space-y-1 overflow-y-auto max-h-[calc(100vh-270px)]">
+                  {ADMIN_TABS.map((tab) => {
+                    const Icon = tab.icon;
+                    const isActive = activeTab === tab.id;
+                    return (
+                      <button
+                        key={tab.id}
+                        onClick={() => {
+                          setActiveTab(tab.id);
+                          setMobileNavOpen(false);
+                        }}
+                        className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                          isActive
+                            ? 'bg-orange-50 text-[#FF6B35] border-l-4 border-[#FF6B35] font-black'
+                            : 'text-slate-700 hover:bg-slate-100'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <Icon className={`w-4 h-4 ${isActive ? 'text-[#FF6B35]' : 'text-slate-500'}`} />
+                          <span>{lang === 'bn' ? tab.labelBn : tab.labelEn}</span>
+                        </div>
+                        {tab.badge && (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-500 text-black">
+                            {tab.badge}
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Drawer Bottom Actions */}
+              <div className="p-3 border-t border-slate-200 space-y-2 bg-slate-50">
+                <button
+                  onClick={() => {
+                    handleToggleAdminLang();
+                    setMobileNavOpen(false);
+                  }}
+                  className="w-full py-2 px-3 rounded-xl border border-orange-200 bg-white hover:bg-orange-50 text-[#FF6B35] text-xs font-bold flex items-center justify-center gap-2 cursor-pointer shadow-2xs"
+                >
+                  <Globe className="w-3.5 h-3.5" />
+                  <span>{lang === 'bn' ? 'Switch to English' : 'বাংলায় দেখুন'}</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setMobileNavOpen(false);
+                    onClose();
+                  }}
+                  className="w-full py-2 px-3 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 text-xs font-semibold flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                  <span>{lang === 'bn' ? 'স্টোরে ফিরে যান' : 'Back to Store'}</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setMobileNavOpen(false);
+                    handleLogout();
+                  }}
+                  className="w-full py-2 px-3 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 text-xs font-semibold flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  <span>{strings.logout}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Tab Body */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 space-y-6">
+        <div className="flex-1 overflow-y-auto p-3 sm:p-5 lg:p-6 space-y-5 sm:space-y-6">
           {/* TAB 1: DASHBOARD (Redesigned per Reference Screenshot 2) */}
           {activeTab === 'dashboard' && (
             <div className="space-y-6">
@@ -949,8 +1187,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   </div>
                   <p className="text-xs text-slate-300">
                     {lang === 'bn' 
-                      ? 'নেবুলা মার্টের লাইভ সেলস ও কুরিয়ার ডেলিভারি ড্যাশবোর্ড ওভারভিউ।'
-                      : 'Live sales analytics, logistics status, and daily e-commerce operations.'}
+                      ? 'মাঠ স্টোরের লাইভ সেলস, ডাটাবেস ও কুরিয়ার ডেলিভারি ড্যাশবোর্ড ওভারভিউ।'
+                      : 'Mart Store live sales, database & logistics dashboard overview.'}
                   </p>
                 </div>
 
@@ -1612,7 +1850,48 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                           </td>
                           <td className="p-3">
                             <span className="font-black text-slate-900 block">৳{order.total}</span>
-                            <span className="text-[10px] text-slate-400">COD (Del: ৳{order.deliveryCharge})</span>
+                            {order.paymentMethod === 'bKash' ? (
+                              <div className="mt-1 space-y-0.5">
+                                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-pink-100 text-[#E2136E]">
+                                  bKash
+                                </span>
+                                {order.senderNumber && (
+                                  <span className="text-[10px] text-slate-600 font-mono block">
+                                    From: {order.senderNumber}
+                                  </span>
+                                )}
+                                {order.transactionId && (
+                                  <span className="text-[10px] text-pink-700 font-mono font-bold block">
+                                    Trx: {order.transactionId}
+                                  </span>
+                                )}
+                              </div>
+                            ) : order.paymentMethod === 'Nagad' ? (
+                              <div className="mt-1 space-y-0.5">
+                                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-orange-100 text-[#F7941D]">
+                                  Nagad
+                                </span>
+                                {order.senderNumber && (
+                                  <span className="text-[10px] text-slate-600 font-mono block">
+                                    From: {order.senderNumber}
+                                  </span>
+                                )}
+                                {order.transactionId && (
+                                  <span className="text-[10px] text-orange-700 font-mono font-bold block">
+                                    Trx: {order.transactionId}
+                                  </span>
+                                )}
+                              </div>
+                            ) : (
+                              <span className="text-[10px] text-slate-500 block">
+                                COD (Del: ৳{order.deliveryCharge})
+                              </span>
+                            )}
+                            {order.couponCode && (
+                              <span className="inline-block mt-1 text-[9px] font-bold px-1 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                {order.couponCode} (-৳{order.discountAmount || 0})
+                              </span>
+                            )}
                           </td>
                           <td className="p-3">
                             <select
@@ -2164,6 +2443,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             </div>
           )}
 
+          {/* TAB: DISCOUNT COUPONS */}
+          {activeTab === 'coupons' && (
+            <AdminCoupons
+              lang={lang}
+              showToast={showToast}
+            />
+          )}
+
           {/* TAB: HERO BANNERS */}
           {activeTab === 'banners' && (
             <AdminBanners
@@ -2185,6 +2472,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 setSettings(StorageService.getSettings());
                 refreshAll();
               }}
+            />
+          )}
+
+          {/* TAB: DATABASE & HOSTING STORAGE ENGINE */}
+          {activeTab === 'database' && (
+            <AdminDatabase
+              lang={lang}
+              onRefreshAll={refreshAll}
+              showToast={showToast}
             />
           )}
 
@@ -2451,7 +2747,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             <div className="space-y-2 text-xs">
               <p><strong>Customer:</strong> {selectedOrder.customerName} ({selectedOrder.customerPhone})</p>
               <p><strong>Address:</strong> {selectedOrder.address}, {selectedOrder.thana ? `${selectedOrder.thana}, ` : ''}{selectedOrder.district}</p>
-              <p><strong>Payment:</strong> Cash on Delivery (৳{selectedOrder.total})</p>
+              <p><strong>Payment Method:</strong> {selectedOrder.paymentMethod || 'Cash on Delivery'} (৳{selectedOrder.total})</p>
+              {selectedOrder.senderNumber && (
+                <p><strong>Sender Phone ({selectedOrder.paymentMethod}):</strong> <span className="font-mono font-bold text-slate-900">{selectedOrder.senderNumber}</span></p>
+              )}
+              {selectedOrder.transactionId && (
+                <p><strong>Transaction ID (TrxID):</strong> <span className="font-mono font-bold text-[#E2136E] bg-pink-50 px-2 py-0.5 rounded border border-pink-200">{selectedOrder.transactionId}</span></p>
+              )}
+              {selectedOrder.couponCode && (
+                <p><strong>Coupon:</strong> {selectedOrder.couponCode} (-৳{selectedOrder.discountAmount || 0})</p>
+              )}
               <p><strong>Courier:</strong> {selectedOrder.courier} (Tracking: {selectedOrder.courierTrackingId || 'None'})</p>
             </div>
 

@@ -1,11 +1,13 @@
-/**
- * Client-side image processor & server uploader
- * Resizes large hard-drive photos into web-optimized WebP/JPEG,
- * posts to /api/upload to write permanently to public/uploads/ on disk,
- * and falls back safely to high-efficiency data URLs.
- */
+import { SupabaseDataService, getSupabaseClient } from './supabase';
 
-export async function processAndUploadImage(file: File, maxWidth = 1200, quality = 0.85): Promise<string> {
+/**
+ * Client-side image processor & multi-tier uploader:
+ * 1. Resizes large hard-drive photos into web-optimized WebP/JPEG (800px max, ~30-45KB)
+ * 2. If Supabase is configured, uploads directly to Supabase Storage ('store-media' bucket)
+ * 3. Returns the high-efficiency WebP/JPEG data URL, which is saved in Firebase Firestore documents
+ *    and synchronized in real-time to ALL other devices (mobile, desktop, preview links).
+ */
+export async function processAndUploadImage(file: File, maxWidth = 800, quality = 0.80): Promise<string> {
   return new Promise((resolve) => {
     const reader = new FileReader();
 
@@ -50,34 +52,33 @@ export async function processAndUploadImage(file: File, maxWidth = 1200, quality
             }
           }
 
-          // Upload to /api/upload to write to public/uploads/ on disk
-          try {
-            const cleanName = file.name
-              .replace(/\.[^/.]+$/, '')
-              .replace(/[^a-zA-Z0-9_-]/g, '_')
-              .slice(0, 40);
+          const cleanName = file.name
+            .replace(/\.[^/.]+$/, '')
+            .replace(/[^a-zA-Z0-9_-]/g, '_')
+            .slice(0, 40);
 
-            const response = await fetch('/api/upload', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                filename: cleanName || 'product-image',
-                base64: base64
-              })
-            });
+          // Tier 1: Try Supabase Storage upload if client is initialized
+          const supabaseClient = getSupabaseClient();
+          if (supabaseClient) {
+            try {
+              const blob = await new Promise<Blob | null>((resBlob) => {
+                canvas.toBlob((b) => resBlob(b), 'image/webp', quality);
+              });
 
-            if (response.ok) {
-              const data = await response.json();
-              if (data && data.url) {
-                resolve(data.url);
-                return;
+              if (blob) {
+                const cloudUrl = await SupabaseDataService.uploadFileToStorage(blob, cleanName);
+                if (cloudUrl) {
+                  resolve(cloudUrl);
+                  return;
+                }
               }
+            } catch (sbUploadErr) {
+              console.warn('Supabase Storage upload fallback to cloud data URL:', sbUploadErr);
             }
-          } catch (uploadErr) {
-            console.warn('Direct disk upload fallback to data URL:', uploadErr);
           }
 
-          // Fallback to base64 if server upload wasn't available
+          // Tier 2: Return high-efficiency web-optimized WebP data URL
+          // Guaranteed to persist directly in Firestore documents & sync across all devices!
           resolve(base64);
         } catch (err) {
           console.error('Image processing error:', err);

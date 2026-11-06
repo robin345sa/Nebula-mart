@@ -1,4 +1,4 @@
-import { Product, Category, StoreSettings, Order, ProductReview, PaymentSettings, HeroBanner, AdminUser, CourierConfig } from '../types';
+import { Product, Category, StoreSettings, Order, ProductReview, PaymentSettings, HeroBanner, AdminUser, CourierConfig, Coupon } from '../types';
 
 export const DEFAULT_PAYMENT_SETTINGS: PaymentSettings = {
   cod: {
@@ -32,8 +32,8 @@ export const DEFAULT_PAYMENT_SETTINGS: PaymentSettings = {
 export const INITIAL_SETTINGS: StoreSettings = {
   storeName: 'Nebula Mart',
   storeNameBn: 'নেবুলা মার্ট',
-  tagline: 'Premium, Trustworthy Online Shopping in Bangladesh',
-  taglineBn: 'বাংলাদেশের বিশ্বস্ত ও প্রিমিয়াম অনলাইন শপিং প্ল্যাটফর্ম',
+  tagline: 'Reliable, Authentic Online Shopping in Bangladesh',
+  taglineBn: 'বাংলাদেশের বিশ্বস্ত ও নির্ভরযোগ্য অনলাইন শপিং প্ল্যাটফর্ম',
   logoUrl: '/logo/nebula-mart.svg?v=3',
   phone: '',
   whatsapp: '',
@@ -50,7 +50,16 @@ export const INITIAL_SETTINGS: StoreSettings = {
   isCourierSandbox: false,
   announcementEn: '🚚 Fast Cash on Delivery all across Bangladesh! Dhaka ৳80 | Outside Dhaka ৳130',
   announcementBn: '🚚 সমগ্র বাংলাদেশে ক্যাশ অন ডেলিভারি সুবিধা! ঢাকা সিটিতে ৳৮০ | ঢাকার বাইরে ৳১৩০',
-  paymentSettings: DEFAULT_PAYMENT_SETTINGS
+  paymentSettings: DEFAULT_PAYMENT_SETTINGS,
+  databaseConfig: {
+    storageMode: 'local_host',
+    hostUrl: '',
+    apiKey: '',
+    secretToken: '',
+    autoSync: true,
+    autoDownloadBackup: false,
+    lastBackupAt: new Date().toISOString()
+  }
 };
 
 export const INITIAL_CATEGORIES: Category[] = [
@@ -573,5 +582,49 @@ export const SAMPLE_REVIEWS: ProductReview[] = [
     comment: 'অফিসে সারাদিন কম্পিউটারের সামনে বসে কাজ করতে গিয়ে কোমরে অনেক ব্যথা হতো। এই কুশনটা ব্যবহারের পর ব্যাক পেইন অনেক কমে গেছে। মেমোরি ফোমটা খুব ভালো মানের।',
     date: '2026-03-12',
     verified: true
+  }
+];
+
+export const INITIAL_COUPONS: Coupon[] = [
+  {
+    id: 'coupon-1',
+    code: 'NEBULA10',
+    discountType: 'percentage',
+    discountValue: 10,
+    minOrderAmount: 1000,
+    maxDiscount: 500,
+    usageLimit: 100,
+    timesUsed: 12,
+    status: 'active',
+    description: '10% discount on orders above ৳1000 (Max ৳500)',
+    descriptionBn: '৳১০০০ এর বেশি অর্ডারে ১০% ছাড় (সর্বোচ্চ ৳৫০০)',
+    createdAt: '2026-03-01T00:00:00.000Z'
+  },
+  {
+    id: 'coupon-2',
+    code: 'WELCOME50',
+    discountType: 'fixed',
+    discountValue: 50,
+    minOrderAmount: 500,
+    usageLimit: 500,
+    timesUsed: 43,
+    status: 'active',
+    description: 'Flat ৳50 discount on your order above ৳500',
+    descriptionBn: '৳৫০০ এর বেশি অর্ডারে ফ্ল্যাট ৳৫০ ছাড়',
+    createdAt: '2026-03-01T00:00:00.000Z'
+  },
+  {
+    id: 'coupon-3',
+    code: 'EID20',
+    discountType: 'percentage',
+    discountValue: 20,
+    minOrderAmount: 2000,
+    maxDiscount: 1000,
+    usageLimit: 50,
+    timesUsed: 5,
+    status: 'active',
+    description: 'Special 20% discount on orders above ৳2000',
+    descriptionBn: '৳২০০০ এর বেশি অর্ডারে ২০% বিশেষ ছাড়',
+    createdAt: '2026-03-05T00:00:00.000Z'
   }
 ];

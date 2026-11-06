@@ -105,8 +105,25 @@ export interface AdminPermissions {
   banners: boolean;
   couriers: boolean;
   payments: boolean;
+  coupons?: boolean;
   staff: boolean;
   settings: boolean;
+}
+
+export interface Coupon {
+  id: string;
+  code: string;
+  discountType: 'percentage' | 'fixed';
+  discountValue: number;
+  minOrderAmount?: number;
+  maxDiscount?: number;
+  usageLimit?: number;
+  timesUsed: number;
+  expiresAt?: string;
+  status: 'active' | 'inactive';
+  description?: string;
+  descriptionBn?: string;
+  createdAt: string;
 }
 
 export interface AdminUser {
@@ -158,14 +175,27 @@ export interface Order {
   items: OrderItem[];
   subtotal: number;
   deliveryCharge: number;
+  discountAmount?: number;
+  couponCode?: string;
   total: number;
   paymentMethod: PaymentMethodType;
+  senderNumber?: string;
   transactionId?: string;
   status: OrderStatus;
   courier: CourierProvider | CourierDispatchInfo | any;
   courierTrackingId?: string;
   courierStatus?: string;
   createdAt: string;
+}
+
+export interface DatabaseConfig {
+  storageMode: 'local_host' | 'hosting_cloud' | 'supabase' | 'custom_api';
+  hostUrl?: string;
+  apiKey?: string;
+  secretToken?: string;
+  autoSync: boolean;
+  autoDownloadBackup: boolean;
+  lastBackupAt?: string;
 }
 
 export interface StoreSettings {
@@ -190,6 +220,7 @@ export interface StoreSettings {
   announcementEn: string;
   announcementBn: string;
   paymentSettings?: PaymentSettings;
+  databaseConfig?: DatabaseConfig;
 }
 
 export interface ProductReview {
@@ -200,4 +231,14 @@ export interface ProductReview {
   comment: string;
   date: string;
   verified: boolean;
+}
+
+export interface CustomerAccount {
+  id: string;
+  name: string;
+  phone: string;
+  password?: string;
+  address?: string;
+  createdAt: string;
+  lastLoginAt?: string;
 }

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Product, Order, Language, Theme, StoreSettings, Category, CartItem, HeroBanner } from './types';
+import { Product, Order, Language, Theme, StoreSettings, Category, CartItem, HeroBanner, CustomerAccount } from './types';
 import { StorageService } from './lib/storage';
 import { t } from './lib/translations';
 import { Navbar } from './components/Navbar';
@@ -9,6 +9,7 @@ import { CategoryShowcase } from './components/CategoryShowcase';
 import { ProductCard } from './components/ProductCard';
 import { ProductDetailsModal } from './components/ProductDetailsModal';
 import { CartDrawer } from './components/CartDrawer';
+import { WishlistDrawer } from './components/WishlistDrawer';
 import { CheckoutModal } from './components/CheckoutModal';
 import { OrderSuccessModal } from './components/OrderSuccessModal';
 import { AdminDashboard } from './components/admin/AdminDashboard';
@@ -16,7 +17,7 @@ import { MobileBottomNav } from './components/MobileBottomNav';
 import { OrderTrackingModal } from './components/OrderTrackingModal';
 import { AccountSupportModal } from './components/AccountSupportModal';
 import { Footer } from './components/Footer';
-import { Filter, SlidersHorizontal, Sparkles, AlertCircle, ShoppingBag, ShieldCheck, ArrowRight, Home, Zap, User } from 'lucide-react';
+import { Filter, SlidersHorizontal, Sparkles, AlertCircle, ShoppingBag, ShieldCheck, ArrowRight, Home, Zap, User, Heart } from 'lucide-react';
 
 export default function App() {
   // Theme & Language (Enforcing clean white architecture)
@@ -33,6 +34,7 @@ export default function App() {
   const [settings, setSettings] = useState<StoreSettings>(() => StorageService.getSettings());
   const [banners, setBanners] = useState<HeroBanner[]>(() => StorageService.getActiveBanners());
   const [cartItems, setCartItems] = useState<CartItem[]>(() => StorageService.getCart());
+  const [wishlistIds, setWishlistIds] = useState<string[]>(() => StorageService.getWishlist());
 
   // Search, Filter & Sort
   const [searchQuery, setSearchQuery] = useState('');
@@ -43,11 +45,25 @@ export default function App() {
   // Modals & Drawers
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [isWishlistOpen, setIsWishlistOpen] = useState(false);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [completedOrder, setCompletedOrder] = useState<Order | null>(null);
   const [isAdminOpen, setIsAdminOpen] = useState(false);
   const [isOrderTrackingOpen, setIsOrderTrackingOpen] = useState(false);
+  const [orderTrackingPhone, setOrderTrackingPhone] = useState<string>('');
   const [isAccountSupportOpen, setIsAccountSupportOpen] = useState(false);
+  const [activeCustomer, setActiveCustomer] = useState<CustomerAccount | null>(() => StorageService.getActiveCustomer());
+
+  // Listen for customer authentication state changes across components
+  useEffect(() => {
+    const handleCustomerChange = (e: any) => {
+      setActiveCustomer(e.detail ?? StorageService.getActiveCustomer());
+    };
+    window.addEventListener('nebula_customer_changed', handleCustomerChange);
+    return () => {
+      window.removeEventListener('nebula_customer_changed', handleCustomerChange);
+    };
+  }, []);
 
   // Check /admin (or #/admin or ?admin) route to securely open the Admin Panel without any frontend buttons
   useEffect(() => {
@@ -89,6 +105,50 @@ export default function App() {
       window.removeEventListener('popstate', handleRouteCheck);
       window.removeEventListener('hashchange', handleRouteCheck);
       window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
+
+  // Listen for storage update events and hydrate from Supabase cloud on mount
+  useEffect(() => {
+    const handleSyncEvent = () => {
+      refreshStoreData();
+    };
+
+    const handleWishlistEvent = () => {
+      setWishlistIds(StorageService.getWishlist());
+    };
+
+    const handleCartEvent = () => {
+      setCartItems(StorageService.getCart());
+    };
+
+    window.addEventListener('nebula_order_updated', handleSyncEvent);
+    window.addEventListener('nebula_banners_updated', handleSyncEvent);
+    window.addEventListener('nebula_products_updated', handleSyncEvent);
+    window.addEventListener('nebula_categories_updated', handleSyncEvent);
+    window.addEventListener('nebula_settings_updated', handleSyncEvent);
+    window.addEventListener('mart_wishlist_updated', handleWishlistEvent);
+    window.addEventListener('mart_cart_updated', handleCartEvent);
+
+    // Initialize real-time multi-device cloud synchronization via Firebase Firestore
+    StorageService.initFirebaseSync();
+
+    // Background cloud hydration if Supabase is also configured
+    const dbCfg = StorageService.getDatabaseConfig();
+    if (dbCfg.storageMode === 'supabase' && dbCfg.hostUrl && dbCfg.apiKey) {
+      StorageService.fetchFromSupabaseAndHydrate()
+        .then(() => refreshStoreData())
+        .catch(() => {});
+    }
+
+    return () => {
+      window.removeEventListener('nebula_order_updated', handleSyncEvent);
+      window.removeEventListener('nebula_banners_updated', handleSyncEvent);
+      window.removeEventListener('nebula_products_updated', handleSyncEvent);
+      window.removeEventListener('nebula_categories_updated', handleSyncEvent);
+      window.removeEventListener('nebula_settings_updated', handleSyncEvent);
+      window.removeEventListener('mart_wishlist_updated', handleWishlistEvent);
+      window.removeEventListener('mart_cart_updated', handleCartEvent);
     };
   }, []);
 
@@ -169,6 +229,34 @@ export default function App() {
     refreshStoreData();
   };
 
+  // Wishlist operations
+  const handleToggleWishlist = (productId: string) => {
+    StorageService.toggleWishlist(productId);
+    setWishlistIds(StorageService.getWishlist());
+  };
+
+  const handleClearWishlist = () => {
+    StorageService.clearWishlist();
+    setWishlistIds([]);
+  };
+
+  const handleMoveAllWishlistToCart = () => {
+    const list = StorageService.getWishlist();
+    const validProds = list
+      .map(id => products.find(p => p.id === id))
+      .filter((p): p is Product => Boolean(p && p.inStock && p.stock > 0));
+
+    if (validProds.length > 0) {
+      let updated = StorageService.getCart();
+      for (const prod of validProds) {
+        updated = StorageService.addToCart(prod, 1);
+      }
+      setCartItems(updated);
+      setIsWishlistOpen(false);
+      setIsCartOpen(true);
+    }
+  };
+
   // Filter and Sort Products
   const safeProducts = Array.isArray(products) ? products : [];
   const safeCategories = Array.isArray(categories) ? categories : [];
@@ -190,7 +278,9 @@ export default function App() {
       product.categoryBn === selectedCategory;
 
     let channelMatch = true;
-    if (activeChannel === 'voucher-max') {
+    if (activeChannel === 'wishlist') {
+      channelMatch = wishlistIds.includes(product.id);
+    } else if (activeChannel === 'voucher-max') {
       channelMatch = (product.discountPercentage || 0) > 15 || !!product.isDiscount;
     } else if (activeChannel === 'daily-needs') {
       channelMatch = true;
@@ -222,6 +312,10 @@ export default function App() {
         onToggleTheme={toggleTheme}
         cartCount={safeCartItems.reduce((acc, i) => acc + (i?.quantity || 1), 0)}
         onOpenCart={() => setIsCartOpen(true)}
+        wishlistCount={wishlistIds.length}
+        onOpenWishlist={() => setIsWishlistOpen(true)}
+        onOpenAccount={() => setIsAccountSupportOpen(true)}
+        activeCustomer={activeCustomer}
         onOpenAdmin={() => setIsAdminOpen(true)}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
@@ -280,6 +374,8 @@ export default function App() {
             onSelect={(prod) => setSelectedProduct(prod)}
             onAddToCart={(prod) => handleAddToCart(prod, 1)}
             onBuyNow={(prod) => handleBuyNow(prod, 1)}
+            wishlistIds={wishlistIds}
+            onToggleWishlist={handleToggleWishlist}
           />
         </>
       )}
@@ -431,6 +527,8 @@ export default function App() {
                 onSelect={(prod) => setSelectedProduct(prod)}
                 onAddToCart={(prod) => handleAddToCart(prod, 1)}
                 onBuyNow={(prod) => handleBuyNow(prod, 1)}
+                isWishlisted={wishlistIds.includes(product.id)}
+                onToggleWishlist={handleToggleWishlist}
               />
             ))}
           </div>
@@ -446,8 +544,26 @@ export default function App() {
           onClose={() => setSelectedProduct(null)}
           onAddToCart={handleAddToCart}
           onBuyNow={handleBuyNow}
+          isWishlisted={selectedProduct ? wishlistIds.includes(selectedProduct.id) : false}
+          onToggleWishlist={handleToggleWishlist}
         />
       )}
+
+      {/* Wishlist Drawer */}
+      <WishlistDrawer
+        isOpen={isWishlistOpen}
+        onClose={() => setIsWishlistOpen(false)}
+        products={products}
+        wishlistIds={wishlistIds}
+        lang={lang}
+        settings={settings}
+        onToggleWishlist={handleToggleWishlist}
+        onClearWishlist={handleClearWishlist}
+        onAddToCart={(prod, qty) => handleAddToCart(prod, qty || 1)}
+        onBuyNow={(prod, qty) => handleBuyNow(prod, qty || 1)}
+        onMoveAllToCart={handleMoveAllWishlistToCart}
+        onSelectProduct={(prod) => setSelectedProduct(prod)}
+      />
 
       {/* Cart Drawer */}
       <CartDrawer
@@ -509,24 +625,34 @@ export default function App() {
       {/* Order Tracking Modal */}
       <OrderTrackingModal
         isOpen={isOrderTrackingOpen}
-        onClose={() => setIsOrderTrackingOpen(false)}
+        onClose={() => {
+          setIsOrderTrackingOpen(false);
+          setOrderTrackingPhone('');
+        }}
         lang={lang}
         settings={settings}
+        initialPhone={orderTrackingPhone}
       />
 
-      {/* Account & Helpline Support Modal */}
+      {/* Account & Registration Support Modal */}
       <AccountSupportModal
         isOpen={isAccountSupportOpen}
         onClose={() => setIsAccountSupportOpen(false)}
         lang={lang}
         settings={settings}
-        onOpenOrders={() => setIsOrderTrackingOpen(true)}
+        onOpenOrders={(phone) => {
+          if (phone) setOrderTrackingPhone(phone);
+          setIsOrderTrackingOpen(true);
+        }}
+        onOpenWishlist={() => setIsWishlistOpen(true)}
+        onOpenCart={() => setIsCartOpen(true)}
       />
 
-      {/* Mobile Fixed Bottom Navigation (Home / Categories / Cart / Orders / Account) */}
+      {/* Mobile Fixed Bottom Navigation (Home / Categories / Wishlist / Cart / Orders / Account) */}
       <MobileBottomNav
         lang={lang}
         cartCount={safeCartItems.reduce((acc, i) => acc + (i?.quantity || 1), 0)}
+        wishlistCount={wishlistIds.length}
         onNavigateHome={() => {
           setSelectedCategory('All');
           setActiveChannel('for-you');
@@ -537,10 +663,22 @@ export default function App() {
           const el = document.getElementById('categories-showcase-section') || document.getElementById('products-grid-section');
           el?.scrollIntoView({ behavior: 'smooth' });
         }}
+        onOpenWishlist={() => setIsWishlistOpen(true)}
         onOpenCart={() => setIsCartOpen(true)}
         onOpenOrders={() => setIsOrderTrackingOpen(true)}
         onOpenAccount={() => setIsAccountSupportOpen(true)}
-        activeTab={selectedCategory === 'All' && !searchQuery ? 'home' : 'categories'}
+        activeCustomer={activeCustomer}
+        activeTab={
+          isAccountSupportOpen
+            ? 'account'
+            : isWishlistOpen
+            ? 'wishlist'
+            : isOrderTrackingOpen
+            ? 'orders'
+            : selectedCategory === 'All' && !searchQuery
+            ? 'home'
+            : 'categories'
+        }
       />
     </div>
   );

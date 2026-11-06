@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Star, ShoppingCart, Zap, Truck, ShieldCheck, Check, Plus, Minus, Send, ThumbsUp } from 'lucide-react';
+import { X, Star, ShoppingCart, Zap, Truck, ShieldCheck, Check, Plus, Minus, Send, ThumbsUp, Heart } from 'lucide-react';
 import { Product, Language, ProductReview, StoreSettings } from '../types';
 import { t } from '../lib/translations';
 import { StorageService } from '../lib/storage';
@@ -11,6 +11,8 @@ interface ProductDetailsModalProps {
   onClose: () => void;
   onAddToCart: (product: Product, quantity: number) => void;
   onBuyNow: (product: Product, quantity: number) => void;
+  isWishlisted?: boolean;
+  onToggleWishlist?: (productId: string) => void;
 }
 
 export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
@@ -19,7 +21,9 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
   settings,
   onClose,
   onAddToCart,
-  onBuyNow
+  onBuyNow,
+  isWishlisted = false,
+  onToggleWishlist
 }) => {
   const strings = t[lang];
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
@@ -70,17 +74,34 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-3 sm:p-6 overflow-y-auto">
       <div className="relative w-full max-w-4xl bg-white dark:bg-[#131B2E] rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden my-auto max-h-[92vh] flex flex-col">
-        {/* Header with Close */}
+        {/* Header with Wishlist & Close */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800 shrink-0">
           <span className="text-xs font-bold text-[#64748B] dark:text-slate-400 uppercase tracking-wider">
             {strings.productDetails} • SKU: {product.sku}
           </span>
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => onToggleWishlist?.(product.id)}
+              className={`p-2 rounded-lg transition-colors cursor-pointer flex items-center gap-1.5 text-xs font-bold ${
+                isWishlisted
+                  ? 'bg-red-50 dark:bg-red-950/40 text-red-500'
+                  : 'text-slate-400 hover:text-red-500 hover:bg-slate-100 dark:hover:bg-slate-800'
+              }`}
+              title={isWishlisted ? (lang === 'bn' ? 'উইশলিস্ট থেকে সরান' : 'Remove from Wishlist') : (lang === 'bn' ? 'উইশলিস্টে যোগ করুন' : 'Add to Wishlist')}
+            >
+              <Heart className={`w-4.5 h-4.5 ${isWishlisted ? 'fill-red-500 text-red-500' : ''}`} />
+              <span className="hidden sm:inline">
+                {isWishlisted ? (lang === 'bn' ? 'উইশলিস্টে আছে' : 'Wishlisted') : (lang === 'bn' ? 'উইশলিস্ট' : 'Wishlist')}
+              </span>
+            </button>
+            <button
+              onClick={onClose}
+              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Modal Scrollable Body */}
@@ -259,6 +280,24 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
                     <span>{strings.buyNow}</span>
                   </button>
                 </div>
+
+                {/* Wishlist Toggle Button */}
+                <button
+                  type="button"
+                  onClick={() => onToggleWishlist?.(product.id)}
+                  className={`w-full h-11 rounded-lg border flex items-center justify-center gap-2 text-xs sm:text-sm font-bold transition-all cursor-pointer active:scale-98 ${
+                    isWishlisted
+                      ? 'border-red-200 dark:border-red-900/50 bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-300'
+                      : 'border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 hover:bg-red-50 dark:hover:bg-red-950/20 hover:text-red-600 hover:border-red-200'
+                  }`}
+                >
+                  <Heart className={`w-4 h-4 ${isWishlisted ? 'fill-red-500 text-red-500' : ''}`} />
+                  <span>
+                    {isWishlisted
+                      ? (lang === 'bn' ? 'পছন্দের তালিকায় সংরক্ষিত (উইশলিস্ট)' : 'Saved in Wishlist')
+                      : (lang === 'bn' ? 'পছন্দের তালিকায় যোগ করুন (উইশলিস্ট)' : 'Add to Wishlist')}
+                  </span>
+                </button>
 
                 {/* Delivery Information Box */}
                 <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700 space-y-2 text-xs text-slate-600 dark:text-slate-300">

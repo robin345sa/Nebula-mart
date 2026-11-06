@@ -16,7 +16,7 @@ export const AdminBanners: React.FC<AdminBannersProps> = ({
   lang,
   categories = [],
   onBannersUpdated,
-  showToast = () => {}
+  showToast = (_msg: string, _type?: 'success' | 'error' | 'info') => {}
 }) => {
   const safeCategories = Array.isArray(categories) ? categories : [];
   const [banners, setBanners] = useState<HeroBanner[]>(() => StorageService.getBanners());

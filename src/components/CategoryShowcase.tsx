@@ -42,8 +42,8 @@ export const CategoryShowcase: React.FC<CategoryShowcaseProps> = ({
           </button>
         </div>
 
-        {/* Categories: Horizontally Scrollable on Mobile, Grid on Desktop */}
-        <div className="flex md:grid md:grid-cols-5 lg:grid-cols-6 gap-2 sm:gap-3 overflow-x-auto pb-1 pt-0.5 scrollbar-none no-scrollbar scroll-smooth">
+        {/* Categories: Horizontally Scrollable on Mobile with Touch Snap & Next Peek, Grid on Desktop */}
+        <div className="flex md:grid md:grid-cols-5 lg:grid-cols-6 gap-2 sm:gap-3 overflow-x-auto pb-1.5 pt-0.5 scrollbar-none no-scrollbar scroll-smooth snap-x snap-mandatory overscroll-x-contain px-0.5">
           {displayCategories.map((cat) => {
             const isSelected = selectedCategory === cat.name;
             const name = lang === 'bn' ? cat.nameBn || cat.name : cat.name;
@@ -52,13 +52,13 @@ export const CategoryShowcase: React.FC<CategoryShowcaseProps> = ({
               <button
                 key={cat.id}
                 onClick={() => onSelectCategory(cat.name)}
-                className={`group shrink-0 min-w-[70px] min-[360px]:min-w-[76px] sm:min-w-[90px] md:min-w-0 flex flex-col items-center text-center p-1.5 sm:p-2.5 rounded-xl border transition-all duration-200 cursor-pointer ${
+                className={`group shrink-0 w-[82px] min-[360px]:w-[88px] sm:w-[98px] md:w-auto snap-start flex flex-col items-center text-center p-2 sm:p-2.5 rounded-xl border transition-all duration-200 cursor-pointer ${
                   isSelected
                     ? 'border-[#F85606] bg-orange-50/60 shadow-2xs ring-1 ring-[#F85606]/30'
                     : 'border-slate-200/75 bg-white hover:border-slate-300 hover:bg-slate-50/60 active:bg-slate-100'
                 }`}
               >
-                <div className="w-11 h-11 min-[360px]:w-12 min-[360px]:h-12 sm:w-14 sm:h-14 rounded-full overflow-hidden mb-1 bg-slate-50 border border-slate-100 flex items-center justify-center p-0.5 group-hover:scale-105 transition-transform">
+                <div className="w-12 h-12 min-[360px]:w-13 min-[360px]:h-13 sm:w-14 sm:h-14 rounded-full overflow-hidden mb-1.5 bg-slate-50 border border-slate-100 flex items-center justify-center p-0.5 group-hover:scale-105 transition-transform">
                   <img
                     src={cat.image || 'https://images.unsplash.com/photo-1546868871-7041f2a55e12?w=300'}
                     alt={name}
@@ -66,10 +66,10 @@ export const CategoryShowcase: React.FC<CategoryShowcaseProps> = ({
                     loading="lazy"
                   />
                 </div>
-                <span className="text-[11px] sm:text-xs font-bold text-slate-800 line-clamp-1 tracking-tight group-hover:text-[#F85606] transition-colors">
+                <span className="text-[11px] sm:text-xs font-bold text-slate-800 line-clamp-1 tracking-tight group-hover:text-[#F85606] transition-colors w-full px-0.5">
                   {name}
                 </span>
-                <span className="text-[9.5px] sm:text-[10px] text-slate-400 font-medium tracking-tight">
+                <span className="text-[9.5px] sm:text-[10px] text-slate-400 font-medium tracking-tight mt-0.5">
                   {cat.productCount > 0 ? `${cat.productCount} ${lang === 'bn' ? 'টি' : 'items'}` : (lang === 'bn' ? 'ব্রাউজ' : 'Explore')}
                 </span>
               </button>

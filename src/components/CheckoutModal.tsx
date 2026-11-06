@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { X, ShieldCheck, Truck, CheckCircle2, AlertCircle, ShoppingBag, Copy, Check, Smartphone, Banknote } from 'lucide-react';
-import { CartItem, Language, StoreSettings, Order, PaymentMethodType } from '../types';
+import { X, ShieldCheck, Truck, CheckCircle2, AlertCircle, ShoppingBag, Copy, Check, Smartphone, Banknote, Tag } from 'lucide-react';
+import { CartItem, Language, StoreSettings, Order, PaymentMethodType, Coupon } from '../types';
 import { t } from '../lib/translations';
 import { StorageService } from '../lib/storage';
 
@@ -23,9 +23,9 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
 }) => {
   const strings = t[lang];
 
-  // Customer form state
-  const [customerName, setCustomerName] = useState('');
-  const [customerPhone, setCustomerPhone] = useState('');
+  // Customer form state (pre-filled from active customer account if logged in)
+  const [customerName, setCustomerName] = useState(() => StorageService.getActiveCustomer()?.name || '');
+  const [customerPhone, setCustomerPhone] = useState(() => StorageService.getActiveCustomer()?.phone || '');
   const [customerEmail, setCustomerEmail] = useState('');
   const [district, setDistrict] = useState<'Dhaka' | 'Outside Dhaka'>('Dhaka');
   const [thana, setThana] = useState('');
@@ -35,8 +35,32 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   // Payment Selection State
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethodType>('Cash on Delivery');
   const [transactionId, setTransactionId] = useState('');
+  const [senderNumber, setSenderNumber] = useState('');
+  const [senderNumberError, setSenderNumberError] = useState('');
   const [trxError, setTrxError] = useState('');
   const [copiedAccount, setCopiedAccount] = useState<string | null>(null);
+
+  const handleCustomerNameChange = (val: string) => {
+    if (val.includes('তানভীর') || val.toLowerCase().includes('tanvir')) {
+      const sanitized = val
+        .replace(/মোহাম্মদ\s*তানভীর\s*আহমেদ/gi, 'মোহাম্মদ অ্যালেক্স')
+        .replace(/তানভীর\s*আহমেদ/gi, 'মোহাম্মদ অ্যালেক্স')
+        .replace(/তানভীর/gi, 'অ্যালেক্স')
+        .replace(/Mohammad\s*Tanvir\s*Ahmed/gi, 'Mohammad Alex')
+        .replace(/Tanvir\s*Ahmed/gi, 'Mohammad Alex')
+        .replace(/Tanvir/gi, 'Alex');
+      setCustomerName(sanitized);
+      return;
+    }
+    setCustomerName(val);
+  };
+
+  // Coupon State
+  const [couponInput, setCouponInput] = useState('');
+  const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
+  const [discountAmount, setDiscountAmount] = useState<number>(0);
+  const [couponError, setCouponError] = useState('');
+  const [couponSuccess, setCouponSuccess] = useState('');
 
   // Errors & Loading state
   const [phoneError, setPhoneError] = useState('');
@@ -66,7 +90,39 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     : (settings?.deliveryChargeOutsideDhaka ?? 130);
 
   const subtotal = items.reduce((acc, i) => acc + i.product.price * i.quantity, 0);
-  const total = subtotal + deliveryCharge;
+  const netSubtotal = Math.max(0, subtotal - discountAmount);
+  const total = netSubtotal + deliveryCharge;
+
+  const handleApplyCoupon = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    setCouponError('');
+    setCouponSuccess('');
+    if (!couponInput.trim()) {
+      setCouponError(lang === 'bn' ? 'অনুগ্রহ করে কুপন কোড লিখুন' : 'Please enter a coupon code');
+      return;
+    }
+
+    const res = StorageService.validateCoupon(couponInput, subtotal);
+    if (res.valid && res.coupon) {
+      setAppliedCoupon(res.coupon);
+      setDiscountAmount(res.discountAmount);
+      setCouponSuccess(res.message);
+      setCouponError('');
+    } else {
+      setAppliedCoupon(null);
+      setDiscountAmount(0);
+      setCouponError(res.message);
+      setCouponSuccess('');
+    }
+  };
+
+  const handleRemoveCoupon = () => {
+    setAppliedCoupon(null);
+    setDiscountAmount(0);
+    setCouponInput('');
+    setCouponError('');
+    setCouponSuccess('');
+  };
 
   // Bangladeshi phone number validator (013 - 019, 11 digits)
   const validateBdPhone = (phone: string): boolean => {
@@ -111,9 +167,32 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       return;
     }
 
-    if ((paymentMethod === 'bKash' || paymentMethod === 'Nagad') && !transactionId.trim()) {
-      setTrxError(lang === 'bn' ? 'অনুগ্রহ করে ট্রানজেকশন আইডি (TrxID) প্রদান করুন।' : 'Please provide the transaction ID (TrxID).');
-      return;
+    if (paymentMethod === 'bKash' || paymentMethod === 'Nagad') {
+      const cleanedSender = senderNumber.trim().replace(/[\s-]/g, '');
+      if (!cleanedSender) {
+        setSenderNumberError(
+          lang === 'bn'
+            ? `অনুগ্রহ করে যেই ${paymentMethod} নম্বর থেকে টাকা পাঠিয়েছেন তা লিখুন।`
+            : `Please enter the sender ${paymentMethod} number.`
+        );
+        return;
+      }
+      if (!validateBdPhone(cleanedSender)) {
+        setSenderNumberError(
+          lang === 'bn'
+            ? 'সঠিক ১১ ডিজিটের ফোন নম্বর দিন (যেমন: 017XXXXXXXX)'
+            : 'Enter a valid 11-digit phone number (e.g. 017XXXXXXXX)'
+        );
+        return;
+      }
+      if (!transactionId.trim()) {
+        setTrxError(
+          lang === 'bn'
+            ? 'অনুগ্রহ করে ট্রানজেকশন আইডি (TrxID) প্রদান করুন।'
+            : 'Please provide the transaction ID (TrxID).'
+        );
+        return;
+      }
     }
 
     setIsSubmitting(true);
@@ -137,15 +216,21 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       })),
       subtotal,
       deliveryCharge,
+      discountAmount: discountAmount > 0 ? discountAmount : undefined,
+      couponCode: appliedCoupon ? appliedCoupon.code : undefined,
       total,
       paymentMethod,
-      transactionId: (paymentMethod === 'bKash' || paymentMethod === 'Nagad') ? transactionId.trim() : undefined
+      senderNumber: (paymentMethod === 'bKash' || paymentMethod === 'Nagad') ? senderNumber.trim().replace(/[\s-]/g, '') : undefined,
+      transactionId: (paymentMethod === 'bKash' || paymentMethod === 'Nagad') ? transactionId.trim().toUpperCase() : undefined
     };
 
     const result = StorageService.createOrder(orderPayload);
     setIsSubmitting(false);
 
     if (result.success && result.order) {
+      if (appliedCoupon) {
+        StorageService.recordCouponUsage(appliedCoupon.id);
+      }
       onOrderSuccess(result.order);
     } else {
       setFormError(result.error || 'Failed to place order. Please check item stock.');
@@ -200,8 +285,8 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                   type="text"
                   required
                   value={customerName}
-                  onChange={(e) => setCustomerName(e.target.value)}
-                  placeholder={lang === 'bn' ? 'আপনার নাম লিখুন' : 'e.g. Shakil Ahmed'}
+                  onChange={(e) => handleCustomerNameChange(e.target.value)}
+                  placeholder={lang === 'bn' ? 'যেমন: মোহাম্মদ অ্যালেক্স' : 'e.g. Mohammad Alex'}
                   className="w-full h-11 px-3.5 rounded-lg border border-[#E5E7EB] bg-white text-sm text-[#111827] focus:outline-hidden focus:border-[#FF6B35]"
                 />
               </div>
@@ -407,24 +492,47 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                 <p className="text-xs text-slate-700">
                   {bkashInstructions}
                 </p>
-                <div>
-                  <label className="block text-xs font-bold text-slate-900 mb-1">
-                    {lang === 'bn' ? 'বিকাশ ট্রানজেকশন আইডি (TrxID)' : 'bKash Transaction ID (TrxID)'} <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={transactionId}
-                    onChange={(e) => {
-                      setTransactionId(e.target.value);
-                      if (trxError) setTrxError('');
-                    }}
-                    placeholder="e.g. 9J4K2L7M1Q"
-                    className="w-full h-11 px-3.5 rounded-lg border border-pink-300 bg-white text-sm uppercase tracking-wider font-mono text-[#111827] focus:outline-hidden focus:border-[#E2136E]"
-                  />
-                  {trxError && (
-                    <p className="text-[11px] text-red-600 mt-1 font-medium">{trxError}</p>
-                  )}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-900 mb-1">
+                      {lang === 'bn' ? 'যেই বিকাশ নম্বর থেকে টাকা পাঠিয়েছেন' : 'Sender bKash Number'} <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="tel"
+                      required
+                      value={senderNumber}
+                      onChange={(e) => {
+                        setSenderNumber(e.target.value);
+                        if (senderNumberError) setSenderNumberError('');
+                      }}
+                      placeholder="যেমন: 017XXXXXXXX"
+                      className={`w-full h-11 px-3.5 rounded-lg border ${
+                        senderNumberError ? 'border-red-500 bg-red-50/20' : 'border-pink-300'
+                      } bg-white text-sm font-mono text-[#111827] focus:outline-hidden focus:border-[#E2136E]`}
+                    />
+                    {senderNumberError && (
+                      <p className="text-[11px] text-red-600 mt-1 font-medium">{senderNumberError}</p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-900 mb-1">
+                      {lang === 'bn' ? 'বিকাশ ট্রানজেকশন আইডি (TrxID)' : 'bKash Transaction ID (TrxID)'} <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={transactionId}
+                      onChange={(e) => {
+                        setTransactionId(e.target.value);
+                        if (trxError) setTrxError('');
+                      }}
+                      placeholder="e.g. 9J4K2L7M1Q"
+                      className="w-full h-11 px-3.5 rounded-lg border border-pink-300 bg-white text-sm uppercase tracking-wider font-mono text-[#111827] focus:outline-hidden focus:border-[#E2136E]"
+                    />
+                    {trxError && (
+                      <p className="text-[11px] text-red-600 mt-1 font-medium">{trxError}</p>
+                    )}
+                  </div>
                 </div>
               </div>
             )}
@@ -462,30 +570,116 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                 <p className="text-xs text-slate-700">
                   {nagadInstructions}
                 </p>
-                <div>
-                  <label className="block text-xs font-bold text-slate-900 mb-1">
-                    {lang === 'bn' ? 'নগদ ট্রানজেকশন আইডি (TrxID)' : 'Nagad Transaction ID (TrxID)'} <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={transactionId}
-                    onChange={(e) => {
-                      setTransactionId(e.target.value);
-                      if (trxError) setTrxError('');
-                    }}
-                    placeholder="e.g. 7N8B3V2C1X"
-                    className="w-full h-11 px-3.5 rounded-lg border border-orange-300 bg-white text-sm uppercase tracking-wider font-mono text-[#111827] focus:outline-hidden focus:border-[#F7941D]"
-                  />
-                  {trxError && (
-                    <p className="text-[11px] text-red-600 mt-1 font-medium">{trxError}</p>
-                  )}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-900 mb-1">
+                      {lang === 'bn' ? 'যেই নগদ নম্বর থেকে টাকা পাঠিয়েছেন' : 'Sender Nagad Number'} <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="tel"
+                      required
+                      value={senderNumber}
+                      onChange={(e) => {
+                        setSenderNumber(e.target.value);
+                        if (senderNumberError) setSenderNumberError('');
+                      }}
+                      placeholder="যেমন: 018XXXXXXXX"
+                      className={`w-full h-11 px-3.5 rounded-lg border ${
+                        senderNumberError ? 'border-red-500 bg-red-50/20' : 'border-orange-300'
+                      } bg-white text-sm font-mono text-[#111827] focus:outline-hidden focus:border-[#F7941D]`}
+                    />
+                    {senderNumberError && (
+                      <p className="text-[11px] text-red-600 mt-1 font-medium">{senderNumberError}</p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-900 mb-1">
+                      {lang === 'bn' ? 'নগদ ট্রানজেকশন আইডি (TrxID)' : 'Nagad Transaction ID (TrxID)'} <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={transactionId}
+                      onChange={(e) => {
+                        setTransactionId(e.target.value);
+                        if (trxError) setTrxError('');
+                      }}
+                      placeholder="e.g. 7N8B3V2C1X"
+                      className="w-full h-11 px-3.5 rounded-lg border border-orange-300 bg-white text-sm uppercase tracking-wider font-mono text-[#111827] focus:outline-hidden focus:border-[#F7941D]"
+                    />
+                    {trxError && (
+                      <p className="text-[11px] text-red-600 mt-1 font-medium">{trxError}</p>
+                    )}
+                  </div>
                 </div>
               </div>
             )}
           </div>
 
-          {/* Section 4: Order Items & Price Summary */}
+          {/* Section 4: Promo Coupon Code */}
+          <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2.5">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                <Tag className="w-3.5 h-3.5 text-[#FF6B35]" />
+                <span>{lang === 'bn' ? 'ডিসকাউন্ট কুপন কোড (ঐচ্ছিক)' : 'Discount Coupon Code (Optional)'}</span>
+              </label>
+              {appliedCoupon && (
+                <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
+                  ✓ {lang === 'bn' ? 'প্রযুক্ত হয়েছে' : 'Applied'}
+                </span>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2">
+              <div className="relative flex-1">
+                <input
+                  type="text"
+                  disabled={!!appliedCoupon}
+                  value={couponInput}
+                  onChange={(e) => {
+                    setCouponInput(e.target.value.toUpperCase());
+                    if (couponError) setCouponError('');
+                  }}
+                  placeholder={lang === 'bn' ? 'যেমন: NEBULA10, WELCOME50' : 'e.g. NEBULA10, WELCOME50'}
+                  className="w-full h-10 px-3.5 rounded-lg border border-slate-300 bg-white text-xs font-mono font-bold tracking-wider uppercase text-slate-900 disabled:bg-slate-100 disabled:text-slate-500 focus:outline-hidden focus:border-[#FF6B35]"
+                />
+              </div>
+
+              {appliedCoupon ? (
+                <button
+                  type="button"
+                  onClick={handleRemoveCoupon}
+                  className="h-10 px-4 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 font-bold text-xs cursor-pointer transition-colors"
+                >
+                  {lang === 'bn' ? 'বাতিল' : 'Remove'}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => handleApplyCoupon()}
+                  className="h-10 px-4 rounded-lg bg-[#FF6B35] hover:bg-[#E85924] text-white font-bold text-xs cursor-pointer shadow-2xs transition-colors shrink-0"
+                >
+                  {lang === 'bn' ? 'প্রয়োগ করুন' : 'Apply'}
+                </button>
+              )}
+            </div>
+
+            {couponError && (
+              <p className="text-[11px] font-semibold text-red-600 flex items-center gap-1">
+                <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                <span>{couponError}</span>
+              </p>
+            )}
+
+            {couponSuccess && (
+              <p className="text-[11px] font-bold text-emerald-700 flex items-center gap-1">
+                <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                <span>{couponSuccess}</span>
+              </p>
+            )}
+          </div>
+
+          {/* Section 5: Order Items & Price Summary */}
           <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
             <div className="flex items-center justify-between pb-2 border-b border-slate-200">
               <span className="text-xs font-bold text-slate-700 uppercase">
@@ -518,6 +712,15 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                 <span>{strings.deliveryCharge}:</span>
                 <span className="font-bold text-slate-800">৳{deliveryCharge}</span>
               </div>
+              {discountAmount > 0 && (
+                <div className="flex justify-between text-emerald-700 font-bold bg-emerald-50 px-2 py-1 rounded-md">
+                  <span className="flex items-center gap-1">
+                    <Tag className="w-3 h-3" />
+                    <span>{lang === 'bn' ? 'কুপন ছাড়' : 'Coupon Discount'} ({appliedCoupon?.code}):</span>
+                  </span>
+                  <span>-৳{discountAmount.toLocaleString()}</span>
+                </div>
+              )}
               <div className="flex justify-between text-base sm:text-lg font-black text-[#0F172A] pt-1.5 border-t border-slate-200">
                 <span className="tracking-[-0.01em]">{strings.total}:</span>
                 <span className="text-[#FF6B35] tracking-[-0.03em] tabular-nums">৳{total.toLocaleString()}</span>

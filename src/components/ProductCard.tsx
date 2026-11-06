@@ -1,5 +1,5 @@
 import React from 'react';
-import { Star, ShoppingBag, Zap, Truck, Check } from 'lucide-react';
+import { Star, ShoppingBag, Zap, Truck, Check, Heart } from 'lucide-react';
 import { Product, Language } from '../types';
 import { t } from '../lib/translations';
 
@@ -9,6 +9,8 @@ interface ProductCardProps {
   onSelect: (product: Product) => void;
   onAddToCart: (product: Product) => void;
   onBuyNow: (product: Product) => void;
+  isWishlisted?: boolean;
+  onToggleWishlist?: (productId: string) => void;
 }
 
 export const ProductCard: React.FC<ProductCardProps> = ({
@@ -16,7 +18,9 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   lang,
   onSelect,
   onAddToCart,
-  onBuyNow
+  onBuyNow,
+  isWishlisted = false,
+  onToggleWishlist
 }) => {
   const strings = t[lang];
   const title = lang === 'bn' ? product.nameBn || product.name : product.name;
@@ -49,23 +53,43 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           }}
         />
 
-        {/* Top-Left Discount Percentage Badge */}
-        {product.discountPercentage > 0 && (
-          <div className="absolute top-1.5 left-1.5 z-10 pointer-events-none">
+        {/* Top-Left Badges: Discount & Hot/Flash */}
+        <div className="absolute top-1.5 left-1.5 z-10 flex flex-col gap-1 pointer-events-none">
+          {product.discountPercentage > 0 && (
             <span className="px-1.5 py-0.5 rounded bg-[#112A7E] text-white text-[9px] sm:text-[10px] font-extrabold tracking-tight shadow-2xs leading-none">
               -{product.discountPercentage}%
             </span>
-          </div>
-        )}
-
-        {/* Top-Right Hot / Flash Badge */}
-        {(product.isHotSelling || product.isFlashDeal) && (
-          <div className="absolute top-1.5 right-1.5 z-10 pointer-events-none">
-            <span className="px-1.5 py-0.5 rounded bg-[#1E40AF] text-white text-[8px] sm:text-[9px] font-bold uppercase shadow-2xs leading-none">
+          )}
+          {(product.isHotSelling || product.isFlashDeal) && (
+            <span className="px-1.5 py-0.5 rounded bg-[#E01A4F] text-white text-[8px] sm:text-[9px] font-bold uppercase shadow-2xs leading-none">
               {product.isHotSelling ? 'HOT' : 'FLASH'}
             </span>
-          </div>
-        )}
+          )}
+        </div>
+
+        {/* Top-Right Interactive Wishlist Heart Button */}
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            if (onToggleWishlist) {
+              onToggleWishlist(product.id);
+            }
+          }}
+          className={`absolute top-1.5 right-1.5 z-20 w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center transition-all cursor-pointer shadow-xs active:scale-90 ${
+            isWishlisted
+              ? 'bg-white text-red-500 shadow-sm ring-1 ring-red-200'
+              : 'bg-white/90 hover:bg-white text-slate-400 hover:text-red-500 backdrop-blur-xs'
+          }`}
+          title={isWishlisted ? (lang === 'bn' ? 'উইশলিস্ট থেকে সরান' : 'Remove from Wishlist') : (lang === 'bn' ? 'উইশলিস্টে যোগ করুন' : 'Add to Wishlist')}
+          aria-label={isWishlisted ? 'Remove from wishlist' : 'Save to wishlist'}
+        >
+          <Heart
+            className={`w-3.5 h-3.5 sm:w-4 sm:h-4 transition-transform duration-200 ${
+              isWishlisted ? 'fill-red-500 text-red-500 scale-110' : ''
+            }`}
+          />
+        </button>
 
         {/* Sleek Bottom-Left Free Delivery Tag */}
         <div className="absolute bottom-1.5 left-1.5 z-10 flex items-center gap-1 pointer-events-none">

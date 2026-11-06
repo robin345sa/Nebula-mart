@@ -67,8 +67,18 @@ export const ImageDropZone: React.FC<ImageDropZoneProps> = ({
             );
           }
 
-          const permanentUrl = await processAndUploadImage(file);
-          const finalUrl = permanentUrl || itemTracker?.previewUrl || '';
+          // Convert to Supabase Storage URL or self-contained WebP data URL
+          let permanentUrl = await processAndUploadImage(file);
+          
+          // Safety check: Never return blob: URL as permanent URL
+          if (!permanentUrl || permanentUrl.startsWith('blob:')) {
+            permanentUrl = await new Promise<string>((resolve) => {
+              const r = new FileReader();
+              r.onload = () => resolve(typeof r.result === 'string' ? r.result : '');
+              r.onerror = () => resolve('');
+              r.readAsDataURL(file);
+            });
+          }
 
           if (itemTracker) {
             setUploadingList(prev =>
@@ -76,7 +86,7 @@ export const ImageDropZone: React.FC<ImageDropZoneProps> = ({
             );
           }
 
-          return finalUrl;
+          return permanentUrl;
         } catch (err) {
           console.error(`Error uploading image ${file.name}:`, err);
           if (itemTracker) {
@@ -84,18 +94,29 @@ export const ImageDropZone: React.FC<ImageDropZoneProps> = ({
               prev.map(p => p.id === itemTracker.id ? { ...p, progress: 'error' } : p)
             );
           }
-          return itemTracker?.previewUrl || '';
+          // Fallback to base64 data url directly from file
+          return new Promise<string>((resolve) => {
+            const r = new FileReader();
+            r.onload = () => resolve(typeof r.result === 'string' ? r.result : '');
+            r.onerror = () => resolve('');
+            r.readAsDataURL(file);
+          });
         }
       });
 
-      const uploadedResults = (await Promise.all(uploadPromises)).filter(Boolean);
+      const uploadedResults = (await Promise.all(uploadPromises)).filter(url => url && !url.startsWith('blob:'));
+
+      // Clean up previous blob URLs from memory
+      newUploadingItems.forEach(item => {
+        try { URL.revokeObjectURL(item.previewUrl); } catch {}
+      });
 
       if (singleMode) {
         if (uploadedResults.length > 0) {
           onChange([uploadedResults[0]]);
         }
       } else {
-        onChange([...safeImages, ...uploadedResults]);
+        onChange([...safeImages.filter(img => !img.startsWith('blob:')), ...uploadedResults]);
       }
     } finally {
       // Clear uploading items after a brief transition

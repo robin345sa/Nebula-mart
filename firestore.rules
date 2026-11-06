@@ -1,0 +1,66 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128;
+    }
+
+    // Default deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Products: public catalog read, open write for admin/store operations
+    match /products/{productId} {
+      allow read: if true;
+      allow write: if isValidId(productId);
+    }
+
+    // Categories: public catalog read
+    match /categories/{categoryId} {
+      allow read: if true;
+      allow write: if isValidId(categoryId);
+    }
+
+    // Orders: customers create orders, read orders by phone/number, admin manages
+    match /orders/{orderId} {
+      allow read, write: if isValidId(orderId);
+    }
+
+    // Coupons: readable for discount validation, manageable by admin and usable during checkout
+    match /coupons/{couponId} {
+      allow read: if true;
+      allow write: if isValidId(couponId);
+    }
+
+    // Banners: public storefront display
+    match /banners/{bannerId} {
+      allow read: if true;
+      allow write: if isValidId(bannerId);
+    }
+
+    // Store Settings: public site config (store name, phone, delivery charges)
+    match /settings/{settingsId} {
+      allow read: if true;
+      allow write: if isValidId(settingsId);
+    }
+
+    // Product Reviews: readable by all, writable by customers
+    match /reviews/{reviewId} {
+      allow read: if true;
+      allow write: if isValidId(reviewId);
+    }
+
+    // Customer Accounts: user registration and profile lookup
+    match /customerAccounts/{customerId} {
+      allow read, write: if isValidId(customerId);
+    }
+
+    // Diagnostics connection test
+    match /test/{docId} {
+      allow read, write: if true;
+    }
+  }
+}

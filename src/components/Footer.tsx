@@ -50,7 +50,7 @@ export const Footer: React.FC<FooterProps> = ({
                   Nebula <span className="text-[#93C5FD]">Mart</span>
                 </span>
                 <span className="block text-[10px] text-blue-200/80 uppercase tracking-[0.14em] font-bold">
-                  {lang === 'bn' ? 'বিশ্বস্ত ই-কমার্স শপ' : 'Premium E-Commerce'}
+                  {lang === 'bn' ? 'নেবুলা মার্ট • বিশ্বস্ত অনলাইন শপ' : 'Nebula Mart • Premium Online Shop'}
                 </span>
               </div>
             </div>
@@ -184,8 +184,8 @@ export const Footer: React.FC<FooterProps> = ({
         </div>
       </div>
 
-      {/* Bottom Legal bar */}
-      <div className="border-t border-slate-800/80 py-4 bg-[#070A14]">
+      {/* Bottom Legal bar (pb-20 on mobile prevents overlay by fixed MobileBottomNav) */}
+      <div className="border-t border-slate-800/80 py-4 pb-20 md:pb-4 bg-[#070A14]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
           <p>© {new Date().getFullYear()} Nebula Mart. All rights reserved. Made for Bangladesh.</p>
           <button
